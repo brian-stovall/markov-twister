@@ -1,0 +1,12 @@
+(ns markov-twister.generator)
+
+(defn text->word-chain [text]
+  (partition-all 3 1 (clojure.string/split text #"[\s|\n]")))
+
+(defn word-chain [word-transitions]
+  (reduce (fn [accumulator data] (merge-with clojure.set/union accumulator
+                                 (let [[a b c] data]
+                                 {[a b] (if c #{c} #{})})))
+          {}
+          word-transitions))
+
