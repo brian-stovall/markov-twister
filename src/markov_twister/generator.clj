@@ -39,72 +39,58 @@
             new-prefix [(last prefix) suffix]]
         (recur new-prefix chain (conj accumulator suffix) length)))))
 
-(defn word-chain->uncleaned-story
-    [chain length]
-  (let [random-prefix (first (shuffle (keys chain)))
-        word-list (word-chain->story-list random-prefix chain [] length)
-        sanitized-words (drop-while (complement capitalized?) word-list)]   
-    sanitized-words))
-
-(defn word-wrap
-  "Adds newline characters to a list of words to make lines less than 'line-length'
-  characters long."
-  [word-list line-length]
-  (loop [accumulator []
-         character-count 0
-         words-left word-list]
-       (let [current-word (first words-left)]
-      (cond (empty? words-left)
-            accumulator
-            (> (+ character-count (count current-word)) line-length)
-            (recur (conj accumulator \newline current-word)
-                   (count current-word)
-                   (rest words-left))
-            :else
-            (recur (conj accumulator current-word)
-                   (+ character-count (count current-word))
-                   (rest words-left))))))
-
-(defn tab-and-break
-  "Add tabs and breaks to a word-list that has already been word-wrapped."
+(defn format-word-list
+  "Adds tab and newline characters to a list of words to make lines less than 'line-length'
+  characters long and broken into paragraphs."
   [word-list]
-  (let [paragraph-lengths (range 3 9)]
+  (let [line-length 70
+        paragraph-lengths (range 3 9)]
     (loop [accumulator [\tab]
-           words-left word-list
-           line-count 0]
-      (cond (empty? words-left)
-            accumulator
-            (and (ending-punctuation? (first words-left))
-                 (> line-count (rand-nth paragraph-lengths)))
-            (recur (conj accumulator (first words-left) \newline \newline \tab)
-                   (rest words-left)
-                   0)
-            (= (first words-left) \newline)
-            (recur (conj accumulator (first words-left))
-                   (rest words-left)
-                   (inc line-count))
-            :else
-            (recur (conj accumulator (first words-left))
-                   (rest words-left)
-                   line-count)))))
+           character-count 0
+           line-count 0
+           words-left word-list]
+      (let [current-word (first words-left)]
+        (cond (empty? words-left)
+              accumulator
+              (> (+ character-count (count current-word)) line-length)
+              (recur (conj accumulator \newline current-word)
+                     (count current-word)
+                     (inc line-count)
+                     (rest words-left))
+              (and (ending-punctuation? current-word) (> line-count (rand-nth paragraph-lengths)))
+              (recur (conj accumulator current-word \newline \newline \tab)
+                     (count current-word)
+                     0
+                     (rest words-left))
+              :else
+              (recur (conj accumulator current-word)
+                     (+ character-count (count current-word))
+                     line-count
+                     (rest words-left)))))))
 
 (defn word-chain->story
   "Chooses a random prefix and generates a story-list of 'length' words,
    drops words from the front until a capitalized word is found, and then
-   joins the words into a string."
+   joins the words into a nicely-formatted string."
   [chain length]
   (let [random-prefix (first (shuffle (keys chain)))
         word-list (word-chain->story-list random-prefix chain [] length)
-        sanitized-words (drop-while (complement capitalized?) word-list)]   
-     (clojure.string/join " " sanitized-words)))
+        formatted-list (format-word-list (drop-while (complement capitalized?) word-list))]   
+    (clojure.string/join " " formatted-list)))
 
 (defn file->word-chain
   "Makes a word-chain from a text file."
   [filename]
   (text->word-chain (slurp (clojure.java.io/resource filename))))
 
+(defn files->word-chain
+  "Unifies the word-chains from many files into one."
+  [& files]
+  (let [chains (map file->word-chain files)]
+    (apply merge-with clojure.set/union chains)))
+
 (defn file->story
-  "Makes a story from a file input."
+  "Makes a story from a single file input."
   [filename length]
   (word-chain->story (file->word-chain filename) length))
 
@@ -112,5 +98,4 @@
   "Makes and unifies the word-chains for an arbitraty number of input files, and then
   builds a story from that word-chain. "
   [length & files]
-  (let [chains (map file->word-chain files)]
-    (word-chain->story (apply merge-with clojure.set/union chains) length)))
+  (word-chain->story (apply files->word-chain files) length))
