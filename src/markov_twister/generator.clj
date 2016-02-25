@@ -2,8 +2,10 @@
 
 (defn ending-punctuation? 
   "A predicate that returns a truthy value when char is . ! or ?"
-  [char]
-  (some #{\. \! \?} char))
+  [string]
+  (if (char? string)
+    false
+    (re-matches #".*[.?!]$" string)))
 
 (defn capitalized?
   "A predicate that returns true when the first letter of a string is
@@ -36,6 +38,55 @@
       (let [suffix (first (shuffle suffixes))
             new-prefix [(last prefix) suffix]]
         (recur new-prefix chain (conj accumulator suffix) length)))))
+
+(defn word-chain->uncleaned-story
+    [chain length]
+  (let [random-prefix (first (shuffle (keys chain)))
+        word-list (word-chain->story-list random-prefix chain [] length)
+        sanitized-words (drop-while (complement capitalized?) word-list)]   
+    sanitized-words))
+
+(defn word-wrap
+  "Adds newline characters to a list of words to make lines less than 'line-length'
+  characters long."
+  [word-list line-length]
+  (loop [accumulator []
+         character-count 0
+         words-left word-list]
+       (let [current-word (first words-left)]
+      (cond (empty? words-left)
+            accumulator
+            (> (+ character-count (count current-word)) line-length)
+            (recur (conj accumulator \newline current-word)
+                   (count current-word)
+                   (rest words-left))
+            :else
+            (recur (conj accumulator current-word)
+                   (+ character-count (count current-word))
+                   (rest words-left))))))
+
+(defn tab-and-break
+  "Add tabs and breaks to a word-list that has already been word-wrapped."
+  [word-list]
+  (let [paragraph-lengths (range 3 9)]
+    (loop [accumulator [\tab]
+           words-left word-list
+           line-count 0]
+      (cond (empty? words-left)
+            accumulator
+            (and (ending-punctuation? (first words-left))
+                 (> line-count (rand-nth paragraph-lengths)))
+            (recur (conj accumulator (first words-left) \newline \newline \tab)
+                   (rest words-left)
+                   0)
+            (= (first words-left) \newline)
+            (recur (conj accumulator (first words-left))
+                   (rest words-left)
+                   (inc line-count))
+            :else
+            (recur (conj accumulator (first words-left))
+                   (rest words-left)
+                   line-count)))))
 
 (defn word-chain->story
   "Chooses a random prefix and generates a story-list of 'length' words,
