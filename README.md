@@ -1,13 +1,14 @@
 # markov-twister
+Randomly generate writing! Make mashups from your favorite authors!
 
-A webservice that allows users to upload multiple plain text files
-and builds a story from them via Markov chains.
+A library for generating and formatting stories from multiple 
+plain-text inputs via Markov process.
+
+Demo webserver hosted by [Heroku][app-link].
 
 Adapted from this great [tutorial][tutorial-link] 
 by [Carin Meier][Carin's blog link].
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
-
+[app-link]: https://once-upon-a-tornado.herokuapp.com
 [tutorial-link]: https://howistart.org/posts/clojure/1
 [Carin's blog link]: http://gigasquidsoftware.com/
